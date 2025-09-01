@@ -1,0 +1,6 @@
+@Battlefield_Multiplayer_game_.NET_HostAddress = http://localhost:5153
+
+GET {{Battlefield_Multiplayer_game_.NET_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
