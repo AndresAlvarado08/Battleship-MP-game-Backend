@@ -8,4 +8,6 @@ public class Sala
 
     public string Estado { get; set; } = "PrePartida"; // En curso y finalizada
 
+    public string Creador { get; set; }
+
 }

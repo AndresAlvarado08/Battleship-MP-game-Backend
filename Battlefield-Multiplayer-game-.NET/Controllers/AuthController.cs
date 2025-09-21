@@ -26,7 +26,7 @@ public class AuthController : ControllerBase
         if (result == null)
             return BadRequest("Usuario ya existe");
 
-        return Ok("Usuario registrado correctamente");
+        return Ok(new { message = "Usuario registrado correctamente" });
     }
 
     [HttpPost("login")]
@@ -49,7 +49,8 @@ public class AuthController : ControllerBase
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-        return Ok("Inicio de sesión exitoso");
+        return Ok(new { message = "Inicio de sesión exitosa" }); 
+        
     }
 
     [HttpPost("logout")]

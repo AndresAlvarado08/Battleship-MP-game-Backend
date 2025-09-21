@@ -8,4 +8,6 @@ public interface ISalaService
     Sala? GetSala(string codigo);
     List<Sala> GelALLSalas();
     void EliminarSala(string codigo);
+    void SalirDeSala(string codigo, string username);
+    bool EliminarSala(string codigo, string username);
 }
