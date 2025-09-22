@@ -1,8 +1,6 @@
 ﻿namespace Battlefield_Multiplayer_game_.NET.Services;
-
 using Models;
 using System.Collections.Concurrent;
-
 
 public class SalaService : ISalaService
 {
@@ -130,5 +128,3 @@ public class SalaService : ISalaService
             .Select(s => s[_random.Next(s.Length)]).ToArray());
     }
 }
-
-
