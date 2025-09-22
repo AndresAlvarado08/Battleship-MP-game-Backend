@@ -9,6 +9,10 @@ public class UserService : IUserService
 {
     private readonly ConcurrentDictionary<string, Usuario> user = new();
 
+
+
+
+
     public Usuario? Register(string username, string password)
     {
         if (user.ContainsKey(username)) return null;
