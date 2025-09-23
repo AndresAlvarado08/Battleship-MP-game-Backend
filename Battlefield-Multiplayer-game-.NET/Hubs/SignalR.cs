@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Services;
 
-
 public class SignalR : Hub
 {
       

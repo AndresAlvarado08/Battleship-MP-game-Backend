@@ -16,7 +16,6 @@ namespace Battlefield_Multiplayer_game_.NET.Rooms
             _rooms = rooms;
         }
 
-        /// <summary>Crea una nueva sala y devuelve su código.</summary>
         [HttpPost]
         [ProducesResponseType(typeof(Room), StatusCodes.Status201Created)]
         public ActionResult<Room> Create([FromBody] CreateRoomDto dto)
@@ -25,7 +24,6 @@ namespace Battlefield_Multiplayer_game_.NET.Rooms
             return CreatedAtAction(nameof(GetByCode), new { code = room.Code }, room);
         }
 
-        /// <summary>Obtiene una sala por su código.</summary>
         [HttpGet("{code}")]
         [ProducesResponseType(typeof(Room), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -36,7 +34,6 @@ namespace Battlefield_Multiplayer_game_.NET.Rooms
             return Ok(room);
         }
 
-        /// <summary>Lista todas las salas (solo desarrollo).</summary>
         [HttpGet]
         public IEnumerable<Room> GetAll() => _rooms.GetAll();
     }

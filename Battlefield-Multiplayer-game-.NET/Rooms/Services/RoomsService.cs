@@ -35,7 +35,7 @@ namespace Battlefield_Multiplayer_game_.NET.Rooms.Services
 
         private string GenerateUniqueCode(int length)
         {
-            const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // evita O/0 y I/1
+            const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
             var rng = Random.Shared;
 
             while (true)
