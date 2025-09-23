@@ -14,22 +14,41 @@ public class UserService : IUserService
         if (user.ContainsKey(username)) return null;
 
         var hash = HashPassword(password);
-        var _user = new Usuario { Username = username, Password = hash };
-        user[username] = _user;
+        var u = new Usuario
+        {
+            Username = username,
+            Password = hash
+        };
 
-        return _user;
+        user[username] = u;
+        return u;
     }
 
     public Usuario? Login(string username, string password)
     {
+
         if (user.TryGetValue(username, out var _user))
         {
             if (VerifyPassword(password, _user.Password))
                 return _user;
         }
         return null;
+
     }
 
+    public Usuario? GetbyUser(string username)
+    {
+        user.TryGetValue(username, out var u);
+        return u;
+    }
+
+    // Nuevo: retornar todos los usuarios
+    public IEnumerable<Usuario> GetAll()
+    {
+        // Nota: devolvemos la colección interna (solo lectura en IEnumerable)
+        // La sanitización de salida (ocultar password) se hace en el controller.
+        return user.Values;
+    }
     private string HashPassword(string password)
     {
         using var sha = SHA256.Create();
