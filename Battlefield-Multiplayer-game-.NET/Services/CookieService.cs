@@ -40,8 +40,8 @@ public class CookieService : ICookieService
             var options = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = _isProduction,
-                SameSite = SameSiteMode.Strict,
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = expires,
                 Path = "/",
                 Domain = null
@@ -79,8 +79,8 @@ public class CookieService : ICookieService
             var options = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = _isProduction,
-                SameSite = SameSiteMode.Strict,
+                Secure = true,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(-1),
                 Path = "/",
                 Domain = null
