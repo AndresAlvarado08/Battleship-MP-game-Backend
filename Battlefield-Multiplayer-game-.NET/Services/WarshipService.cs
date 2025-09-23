@@ -1,4 +1,4 @@
-using Battlefield_Multiplayer_game_.NET.Models;
+ï»¿using Battlefield_Multiplayer_game_.NET.Models;
 using Battlefield_Multiplayer_game_.NET.Hubs;
 
 namespace Battlefield_Multiplayer_game_.NET.Services;
@@ -35,7 +35,7 @@ public class WarshipService : IWarshipService
                 return null;
             }
 
-            // Crear usuarios para el juego
+           
             var usuarios = usernames.Select(name => new Usuario 
             { 
                 Username = name,
@@ -59,7 +59,7 @@ public class WarshipService : IWarshipService
             juego.Estado = EstadoJuego.EnCurso;
             _juegos[codigoSala] = juego;
 
-            // ?? Notificar inicio del juego via SignalR
+          
             var gameData = new
             {
                 codigoSala = juego.CodigoSala,
@@ -89,7 +89,7 @@ public class WarshipService : IWarshipService
 
     private void InicializarTablero(JuegoWarship juego)
     {
-        // Llenar tablero con agua
+      
         for (int i = 0; i < 10; i++)
         {
             for (int j = 0; j < 10; j++)
@@ -116,7 +116,7 @@ public class WarshipService : IWarshipService
 
                 var posicionesBarco = GenerarPosicionesBarco(fila, columna, esHorizontal);
 
-                // Verificar que todas las posiciones estén libres y dentro del tablero
+               
                 if (posicionesBarco.All(pos => 
                     pos.fila >= 0 && pos.fila < 10 && 
                     pos.columna >= 0 && pos.columna < 10 && 
@@ -134,7 +134,7 @@ public class WarshipService : IWarshipService
 
             if (!barcoColocado)
             {
-                // Fallback: colocar en cualquier posición disponible
+               
                 ColocarBarcoFallback(usuario, posicionesOcupadas);
             }
         }
@@ -161,7 +161,7 @@ public class WarshipService : IWarshipService
 
     private void ColocarBarcoFallback(Usuario usuario, HashSet<(int, int)> posicionesOcupadas)
     {
-        // Buscar 3 posiciones consecutivas disponibles
+       
         for (int fila = 0; fila < 10; fila++)
         {
             for (int columna = 0; columna < 8; columna++)
@@ -199,15 +199,15 @@ public class WarshipService : IWarshipService
             if (juego == null || juego.Estado != EstadoJuego.EnCurso)
                 return null;
 
-            // Verificar que sea el turno del usuario
+           
             if (juego.UsuarioTurnoActual.Username != username)
                 return null;
 
-            // Verificar coordenadas válidas
+           
             if (fila < 0 || fila >= 10 || columna < 0 || columna >= 10)
                 return null;
 
-            // Verificar que la casilla no haya sido disparada antes
+            
             if (juego.Tablero[fila, columna] == 'X' || juego.Tablero[fila, columna] == 'O')
                 return null;
 
@@ -217,7 +217,7 @@ public class WarshipService : IWarshipService
                 Columna = columna
             };
 
-            // Buscar si hay un barco en esa posición
+           
             var usuarioImpactado = juego.Usuarios.FirstOrDefault(u => 
                 u.SigueEnJuego && u.Barco.Contains((fila, columna)));
 
@@ -225,7 +225,7 @@ public class WarshipService : IWarshipService
 
             if (usuarioImpactado != null)
             {
-                // ¡Acierto!
+              
                 juego.Tablero[fila, columna] = 'X';
                 usuarioImpactado.Barco.Remove((fila, columna));
                 juego.UsuarioTurnoActual.Puntos++;
@@ -234,10 +234,10 @@ public class WarshipService : IWarshipService
                 resultado.UsuarioImpactado = usuarioImpactado.Username;
                 resultado.UsuarioEliminado = !usuarioImpactado.SigueEnJuego;
                 resultado.Mensaje = resultado.UsuarioEliminado 
-                    ? $"¡{usuarioImpactado.Username} ha sido eliminado!"
-                    : $"¡Impacto en el barco de {usuarioImpactado.Username}!";
+                    ? $"Â¡{usuarioImpactado.Username} ha sido eliminado!"
+                    : $"Â¡Impacto en el barco de {usuarioImpactado.Username}!";
 
-                // ?? Notificar eliminación via SignalR
+               
                 if (resultado.UsuarioEliminado)
                 {
                     _ = Task.Run(async () => await _signalRService.NotifyPlayerEliminated(codigoSala, usuarioImpactado.Username));
@@ -245,25 +245,24 @@ public class WarshipService : IWarshipService
             }
             else
             {
-                // Agua
+               
                 juego.Tablero[fila, columna] = 'O';
                 resultado.Acierto = false;
-                resultado.Mensaje = "¡Agua!";
+                resultado.Mensaje = "Â¡Agua!";
             }
 
-            // Agregar al historial
+           
             juego.HistorialTurnos.Add($"{username}: ({fila},{columna}) - {resultado.Mensaje}");
 
-            // ?? Notificar resultado del disparo via SignalR
+           
             _ = Task.Run(async () => await _signalRService.NotifyShot(codigoSala, resultado));
 
-            // Verificar fin del juego
             if (juego.JuegoTerminado)
             {
                 juego.Estado = EstadoJuego.Finalizado;
                 juego.Ganador = juego.UsuariosActivos.FirstOrDefault();
                 
-                // ?? Notificar fin del juego via SignalR
+               
                 if (juego.Ganador != null)
                 {
                     _ = Task.Run(async () => await _signalRService.NotifyGameEnded(codigoSala, juego.Ganador.Username));
@@ -274,23 +273,23 @@ public class WarshipService : IWarshipService
             }
             else
             {
-                // Siguiente turno
+               
                 juego.TurnoActual = (juego.TurnoActual + 1) % juego.Usuarios.Count;
                 
-                // Saltar usuarios eliminados
+               
                 while (!juego.UsuarioTurnoActual.SigueEnJuego && !juego.JuegoTerminado)
                 {
                     juego.TurnoActual = (juego.TurnoActual + 1) % juego.Usuarios.Count;
                 }
 
-                // ?? Notificar cambio de turno via SignalR
+              
                 if (!juego.JuegoTerminado)
                 {
                     _ = Task.Run(async () => await _signalRService.NotifyTurnChange(codigoSala, turnoAnterior, juego.UsuarioTurnoActual.Username));
                 }
             }
 
-            // ?? Notificar actualización general del juego
+           
             var gameUpdate = new
             {
                 codigoSala = juego.CodigoSala,
@@ -346,27 +345,27 @@ public class WarshipService : IWarshipService
 
         var stats = new List<string>
         {
-            $"?? Sala: {juego.CodigoSala}",
-            $"? Iniciado: {juego.IniciadoEn:HH:mm:ss}",
-            $"?? Estado: {juego.Estado}",
+            $"Sala: {juego.CodigoSala}",
+            $"Iniciado: {juego.IniciadoEn:HH:mm:ss}",
+            $"Estado: {juego.Estado}",
             ""
         };
 
         if (juego.Estado == EstadoJuego.Finalizado && juego.Ganador != null)
         {
-            stats.Add($"?? GANADOR: {juego.Ganador.Username}");
+            stats.Add($"GANADOR: {juego.Ganador.Username}");
             stats.Add("");
         }
         else if (juego.Estado == EstadoJuego.EnCurso)
         {
-            stats.Add($"?? Turno actual: {juego.UsuarioTurnoActual.Username}");
+            stats.Add($" Turno actual: {juego.UsuarioTurnoActual.Username}");
             stats.Add("");
         }
 
-        stats.Add("?? Usuarios:");
+        stats.Add("ðŸ‘¥ Usuarios:");
         foreach (var usuario in juego.Usuarios.OrderByDescending(u => u.Puntos))
         {
-            var estado = usuario.SigueEnJuego ? "??" : "??";
+            var estado = usuario.SigueEnJuego ? "ðŸŸ¢" : "ðŸ’€";
             stats.Add($"{estado} {usuario.Username}: {usuario.Puntos} puntos, {usuario.Barco.Count} casillas");
         }
 
