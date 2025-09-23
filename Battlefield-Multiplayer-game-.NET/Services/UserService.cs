@@ -9,10 +9,6 @@ public class UserService : IUserService
 {
     private readonly ConcurrentDictionary<string, Usuario> user = new();
 
-
-
-
-
     public Usuario? Register(string username, string password)
     {
         if (user.ContainsKey(username)) return null;
@@ -33,12 +29,6 @@ public class UserService : IUserService
                 return _user;
         }
         return null;
-    }
-
-    public Usuario? GetbyUser(string username)
-    {
-        user.TryGetValue(username, out var _user);
-        return _user;
     }
 
     private string HashPassword(string password)
