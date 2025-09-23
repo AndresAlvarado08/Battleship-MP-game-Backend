@@ -1,127 +1,213 @@
-﻿namespace Battlefield_Multiplayer_game_.NET.Controllers;
-
+﻿using Battlefield_Multiplayer_game_.NET.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Services;
+using System.Linq;
 
-[ApiController]
-[Route("sala")]
-[Authorize]
-public class SalaController : ControllerBase
+namespace Battlefield_Multiplayer_game_.NET.Controllers
 {
-    private readonly ISalaService _salas;
-
-    public SalaController(ISalaService sala)
+    [ApiController]
+    [Route("sala")]
+    public class SalaController : ControllerBase
     {
-        _salas = sala;
-    }
+        private readonly ISalaService _salas;
+        private readonly ITokenServices _tokens;
+        private readonly ILogger<SalaController> _logger;
 
-    [HttpPost("create")]
-    public IActionResult CreateRoom()
-    {
-        var username = User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(username))
-            return Unauthorized("Debes iniciar sesión para acceder a las salas");
-
-        var sala = _salas.CreateSala(username);
-        return Ok(new {
-            sala.Codigo,
-            sala.Estado,
-            sala.Jugadores,
-            Mensaje = "Sala creada y te has unido automáticamente"
-        });
-    }
-
-    [HttpPost("join")]
-    public IActionResult JoinRoom([FromBody] JoinDto dto)
-    {
-        var username = User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(username))
-            return Unauthorized("Debes iniciar sesión para acceder a las salas");
-
-        var sala = _salas.GetSala(dto.Codigo);
-        if (sala == null)
-            return NotFound("La sala no existe");
-
-        if (sala.Jugadores.Contains(username))
-            return BadRequest("Ya eres miembro de la sala");
-
-        var salaJoined = _salas.JoinSala(dto.Codigo, username);
-        if (salaJoined == null)
-            return BadRequest("La sala está llena y no puedes unirte");
-
-        return Ok(new {
-            salaJoined.Codigo,
-            salaJoined.Estado,
-            salaJoined.Jugadores,
-            Mensaje = "Haz ingresado a la sala correctamente"
-        });
-    }
-
-    [HttpPost("leave")]
-    public IActionResult LeaveRoom([FromBody] JoinDto dto)
-    {
-        var username = User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(username))
-            return Unauthorized("Debes iniciar sesión para acceder a las salas");
-
-        var sala = _salas.GetSala(dto.Codigo);
-        if (sala == null)
-            return NotFound("La sala no existe");
-
-        if (!sala.Jugadores.Contains(username))
-            return BadRequest("No eres miembro de la sala");
-
-        sala.Jugadores.Remove(username);
-        if (sala.Jugadores.Count == 0)
+        public SalaController(ISalaService salas, ITokenServices tokens, ILogger<SalaController> logger)
         {
-            // Elimina la sala si está vacía
-            _salas.EliminarSala(dto.Codigo);
-            return Ok(new { Mensaje = "Has salido de la sala y la sala ha sido eliminada automáticamente" });
+            _salas = salas;
+            _tokens = tokens;
+            _logger = logger;
         }
-        return Ok(new { Mensaje = "Has salido de la sala correctamente" });
-    }
 
-    [HttpGet("{codigo}")]
-    public IActionResult GetRoom(string codigo)
-    {
-        var username = User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(username))
-            return Unauthorized("Debes iniciar sesión para acceder a las salas");
+        private string? GetUsernameFromCookie()
+        {
+            try
+            {
+                var accessToken = Request.Cookies["accessToken"];
+                if (string.IsNullOrWhiteSpace(accessToken)) return null;
 
-        var sala = _salas.GetSala(codigo);
-        if (sala == null)
-            return NotFound("La sala no existe");
+                var principal = _tokens.GetPrincipalFromToken(accessToken);
+                return principal?.Identity?.Name;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error obteniendo username desde cookie");
+                return null;
+            }
+        }
 
-        return Ok(new {
-            sala.Codigo,
-            sala.Estado,
-            sala.Jugadores
-        });
-    }
+        [HttpPost("crear")]
+        public IActionResult CrearSala()
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "Debes iniciar sesión para acceder a las salas" });
 
-    [HttpGet]
-    public IActionResult GetAllRooms()
-    {
-        var username = User.Identity?.Name;
-        if (string.IsNullOrWhiteSpace(username))
-            return Unauthorized("Debes iniciar sesión para acceder a las salas");
+                var sala = _salas.CreateSala(username);
+                if (sala == null)
+                    return BadRequest(new { message = "Ya estás en una sala, no puedes crear otra" });
 
-        var rooms = _salas.GelALLSalas();
-        return Ok(rooms.Select(r => new {
-            r.Codigo,
-            r.Estado,
-            r.Jugadores
-        }));
-    }
+                _logger.LogInformation("Sala creada exitosamente: {Codigo} por usuario: {Username}", sala.Codigo, username);
+                
+                return Ok(new
+                {
+                    codigo = sala.Codigo,
+                    estado = sala.Estado,
+                    jugadores = sala.Jugadores ?? new List<string>(),
+                    creador = sala.Creador,
+                    message = "Sala creada y te has unido automáticamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear sala");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
 
-    public class JoinDto
-    {
-        public string Codigo { get; set; } = string.Empty;
+        [HttpPost("unirse/{codigo}")]
+        public IActionResult Unirse(string codigo)
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "Debes iniciar sesión para acceder a las salas" });
+
+                var sala = _salas.GetSala(codigo);
+                if (sala == null) 
+                    return NotFound(new { message = "La sala no existe" });
+
+                var salaJoined = _salas.JoinSala(codigo, username);
+                if (salaJoined == null)
+                {
+                    if (_salas.GetSala(codigo)?.Jugadores.Contains(username) == true)
+                        return BadRequest(new { message = "Ya eres miembro de la sala" });
+
+                    return BadRequest(new { message = "Ya estás en otra sala o la sala está llena" });
+                }
+
+                _logger.LogInformation("Usuario {Username} se unió a la sala {Codigo}", username, codigo);
+
+                return Ok(new
+                {
+                    codigo = salaJoined.Codigo,
+                    estado = salaJoined.Estado,
+                    jugadores = salaJoined.Jugadores,
+                    creador = salaJoined.Creador,
+                    message = "Te has unido a la sala correctamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al unirse a la sala {Codigo}", codigo);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpPost("salir/{codigo}")]
+        public IActionResult Salir(string codigo)
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "Debes iniciar sesión para acceder a las salas" });
+
+                var sala = _salas.GetSala(codigo);
+                if (sala == null) 
+                    return NotFound(new { message = "La sala no existe" });
+
+                if (!sala.Jugadores.Contains(username))
+                    return BadRequest(new { message = "No eres miembro de la sala" });
+
+                _salas.SalirDeSala(codigo, username);
+                
+                _logger.LogInformation("Usuario {Username} salió de la sala {Codigo}", username, codigo);
+                
+                return Ok(new { message = "Has salido de la sala correctamente" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al salir de la sala {Codigo}", codigo);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpGet("{codigo}")]
+        public IActionResult ObtenerSala(string codigo)
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "Debes iniciar sesión para acceder a las salas" });
+
+                var sala = _salas.GetSala(codigo);
+                if (sala == null) 
+                    return NotFound(new { message = "La sala no existe" });
+
+                return Ok(new
+                {
+                    codigo = sala.Codigo,
+                    estado = sala.Estado,
+                    jugadores = sala.Jugadores,
+                    creador = sala.Creador
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener sala {Codigo}", codigo);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult ObtenerTodas()
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "Debes iniciar sesión para acceder a las salas" });
+
+                var rooms = _salas.GelALLSalas();
+                
+                var result = rooms.Select(r => new
+                {
+                    codigo = r.Codigo,
+                    estado = r.Estado,
+                    jugadores = r.Jugadores,
+                    creador = r.Creador
+                }).ToList();
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener todas las salas");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpGet("user")]
+        public IActionResult GetUser()
+        {
+            try
+            {
+                var username = GetUsernameFromCookie();
+                if (string.IsNullOrWhiteSpace(username))
+                    return Unauthorized(new { message = "No has iniciado sesión" });
+
+                return Ok(new { username });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener información del usuario");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
     }
 }
-
-
-
-
-

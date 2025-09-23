@@ -25,16 +25,9 @@ public class UserService : IUserService
         if (user.TryGetValue(username, out var _user))
         {
             if (VerifyPassword(password, _user.Password))
-
                 return _user;
         }
         return null;
-    }
-
-    public Usuario? GetbyUser(string username)
-    {
-        user.TryGetValue(username, out var _user);
-        return _user;
     }
 
     private string HashPassword(string password)
@@ -48,5 +41,4 @@ public class UserService : IUserService
     {
         return HashPassword(password) == hash;
     }
-
 }
