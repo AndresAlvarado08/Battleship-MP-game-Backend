@@ -27,6 +27,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IUserService, UserService>();
 builder.Services.AddSingleton<ISalaService, SalaService>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddSingleton<IWarshipService, WarshipService>();
+builder.Services.AddSingleton<ISignalRService, SignalRService>();
 builder.Services.AddScoped<ITokenServices, TokenService>();
 builder.Services.AddScoped<ICookieService, CookieService>();
 
@@ -34,7 +36,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173") 
+        policy.WithOrigins("http://localhost:5174") 
               .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod();
