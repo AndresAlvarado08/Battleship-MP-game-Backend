@@ -26,9 +26,14 @@ public class UserService : IUserService
 
     public Usuario? Login(string username, string password)
     {
-        if (!user.TryGetValue(username, out var u)) return null;
-        if (!VerifyPassword(password, u.Password)) return null;
-        return u;
+
+        if (user.TryGetValue(username, out var _user))
+        {
+            if (VerifyPassword(password, _user.Password))
+                return _user;
+        }
+        return null;
+
     }
 
     public Usuario? GetbyUser(string username)
