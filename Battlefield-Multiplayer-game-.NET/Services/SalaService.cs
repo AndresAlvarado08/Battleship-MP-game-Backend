@@ -14,7 +14,7 @@ public class SalaService : ISalaService
     {
 
         if (_usuarioSala.ContainsKey(creatorUsername))
-          throw new InvalidOperationException("El usuario ya esta en una sala");
+        return null;
 
         string codigo = GenerateCode();
 
@@ -33,29 +33,33 @@ public class SalaService : ISalaService
 
     public Sala? JoinSala(string codigo, string username)
     {
+        //si el usuario ya esta en cualquier sala no puede unirse a otra
         if (_usuarioSala.ContainsKey(username))
-            throw new InvalidOperationException("El usuario ya esta en una sala");
-
+            return null; 
 
         if (_salas.TryGetValue(codigo, out var sala))
         {
-            // Si la sala ya tiene 2 jugadores no se puede unir nadie mas, solo para desarrollo
+            // Si la sala ya tiene 2 jugadores (ejemplo) no se puede unir nadie más
             if (sala.Jugadores.Count >= 2)
-            {
                 return null;
-            }
+
+            // Si el usuario aun no está en la sala lo añadimos
             if (!sala.Jugadores.Contains(username))
             {
                 sala.Jugadores.Add(username);
-                // Si ahora hay 2 jugadores cambia el estado a "En curso"
+
+                // Registrar que el usuario está ahora en esta sala
+                _usuarioSala[username] = codigo;
+
+                // Si la sala ahora tiene 2 jugadores  cambia su estado a en curso
                 if (sala.Jugadores.Count == 2)
-                {
                     sala.Estado = "En curso";
-                }
             }
+
             return sala;
         }
-        return null;
+
+        return null; 
     }
 
     public Sala? GetSala(string codigo)

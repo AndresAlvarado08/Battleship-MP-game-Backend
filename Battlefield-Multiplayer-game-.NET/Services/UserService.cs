@@ -44,7 +44,6 @@ public class UserService : IUserService
         // La sanitización de salida (ocultar password) se hace en el controller.
         return user.Values;
     }
-
     private string HashPassword(string password)
     {
         using var sha = SHA256.Create();
