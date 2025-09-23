@@ -1,4 +1,5 @@
 ﻿using Battlefield_Multiplayer_game_.NET.Services;
+using Battlefield_Multiplayer_game_.NET.Hubs;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 
@@ -11,12 +12,14 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
         private readonly ISalaService _salas;
         private readonly ITokenServices _tokens;
         private readonly ILogger<SalaController> _logger;
+        private readonly ISignalRService _signalRService;
 
-        public SalaController(ISalaService salas, ITokenServices tokens, ILogger<SalaController> logger)
+        public SalaController(ISalaService salas, ITokenServices tokens, ILogger<SalaController> logger, ISignalRService signalRService)
         {
             _salas = salas;
             _tokens = tokens;
             _logger = logger;
+            _signalRService = signalRService;
         }
 
         private string? GetUsernameFromCookie()
@@ -37,7 +40,7 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
         }
 
         [HttpPost("crear")]
-        public IActionResult CrearSala()
+        public async Task<IActionResult> CrearSala()
         {
             try
             {
@@ -51,14 +54,19 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
 
                 _logger.LogInformation("Sala creada exitosamente: {Codigo} por usuario: {Username}", sala.Codigo, username);
                 
-                return Ok(new
+                var roomData = new
                 {
                     codigo = sala.Codigo,
                     estado = sala.Estado,
                     jugadores = sala.Jugadores ?? new List<string>(),
                     creador = sala.Creador,
                     message = "Sala creada y te has unido automáticamente"
-                });
+                };
+
+                // 🚀 Notificar creación de sala via SignalR
+                _ = Task.Run(async () => await _signalRService.NotifyRoomUpdate(sala.Codigo, roomData));
+
+                return Ok(roomData);
             }
             catch (Exception ex)
             {
@@ -68,7 +76,7 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
         }
 
         [HttpPost("unirse/{codigo}")]
-        public IActionResult Unirse(string codigo)
+        public async Task<IActionResult> Unirse(string codigo)
         {
             try
             {
@@ -91,14 +99,19 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
 
                 _logger.LogInformation("Usuario {Username} se unió a la sala {Codigo}", username, codigo);
 
-                return Ok(new
+                var roomData = new
                 {
                     codigo = salaJoined.Codigo,
                     estado = salaJoined.Estado,
                     jugadores = salaJoined.Jugadores,
                     creador = salaJoined.Creador,
                     message = "Te has unido a la sala correctamente"
-                });
+                };
+
+                // 🚀 Notificar actualización de sala via SignalR
+                _ = Task.Run(async () => await _signalRService.NotifyRoomUpdate(codigo, roomData));
+
+                return Ok(roomData);
             }
             catch (Exception ex)
             {
@@ -108,7 +121,7 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
         }
 
         [HttpPost("salir/{codigo}")]
-        public IActionResult Salir(string codigo)
+        public async Task<IActionResult> Salir(string codigo)
         {
             try
             {
@@ -126,7 +139,24 @@ namespace Battlefield_Multiplayer_game_.NET.Controllers
                 _salas.SalirDeSala(codigo, username);
                 
                 _logger.LogInformation("Usuario {Username} salió de la sala {Codigo}", username, codigo);
-                
+
+                // Obtener estado actualizado de la sala (puede haber sido eliminada)
+                var salaActualizada = _salas.GetSala(codigo);
+                if (salaActualizada != null)
+                {
+                    var roomData = new
+                    {
+                        codigo = salaActualizada.Codigo,
+                        estado = salaActualizada.Estado,
+                        jugadores = salaActualizada.Jugadores,
+                        creador = salaActualizada.Creador,
+                        message = $"{username} ha salido de la sala"
+                    };
+
+                    // 🚀 Notificar actualización de sala via SignalR
+                    _ = Task.Run(async () => await _signalRService.NotifyRoomUpdate(codigo, roomData));
+                }
+
                 return Ok(new { message = "Has salido de la sala correctamente" });
             }
             catch (Exception ex)
